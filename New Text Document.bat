@@ -1,0 +1,1 @@
+start cmd.exe /c "cd Scripts && activate.bat && python -m main"

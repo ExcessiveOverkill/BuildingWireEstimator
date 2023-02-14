@@ -217,13 +217,44 @@ def findExactOutletLocations(words, panelNames, ignoreNames, textOnly=True):
                     
     return exactRP2Points
 
-def findScaledRectilinearDistances(exactPanelPoints, exactRP2Points, scale, fullImageColor=None):
+def findBuildingContour(fullImage, fullImageColor):
+    ret, blurImage = cv2.threshold(fullImage,200,255,cv2.THRESH_BINARY_INV)
+
+    blurImage = cv2.GaussianBlur(blurImage,(301,301),0)
+    ret, blurImage = cv2.threshold(blurImage,1,255,cv2.THRESH_BINARY)
+
+    blurImage = cv2.GaussianBlur(blurImage,(201,201),0)
+    ret, blurImage = cv2.threshold(blurImage,254,255,cv2.THRESH_BINARY)
+
+    contours, hierarchy = cv2.findContours(blurImage, 1, cv2.CHAIN_APPROX_SIMPLE)
+
+    fullArea = np.shape(blurImage)[0] * np.shape(blurImage)[1]
+    minArea = fullArea * .1
+    maxArea = fullArea * .8
+    biggestCntArea = 0
+    biggestCnt = None
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < minArea or area > maxArea:
+            continue
+        if area > biggestCntArea:
+            biggestCntArea = area
+            biggestCnt = cnt
+    
+    fullImageColor = cv2.drawContours(fullImageColor, [biggestCnt], 0, (255, 0, 0), 4)
+    #cv2.imwrite("test.png", fullImageColor)
+    return biggestCnt, fullImageColor
+
+def findScaledRectilinearDistances(exactPanelPoints, exactRP2Points, scale, buildingContour, fullImageColor=None):
     #find scaled rectilinear distances to devices in feet
     enableDrawing = False
     if fullImageColor is not None:
         enableDrawing = True
         textImage = np.zeros_like(fullImageColor)
         textImage = cv2.rotate(textImage, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        buildingImage = np.zeros_like(fullImageColor)
+        buildingImage = cv2.drawContours(buildingImage, [buildingContour], 0, (255, 0, 0), -1)
+        cv2.imwrite("test.png", buildingImage)
     textOffset = [-10*zoom, 17*zoom]
     distances = []
     for panel in exactPanelPoints:
@@ -234,8 +265,12 @@ def findScaledRectilinearDistances(exactPanelPoints, exactRP2Points, scale, full
                     dist /= scale
                     distances.append([device[0], dist])
                     if enableDrawing:
-                        fullImageColor = cv2.line(fullImageColor, panel[1], [device[1][0], panel[1][1]], [0, 0, 255], 2)
-                        fullImageColor = cv2.line(fullImageColor, [device[1][0], panel[1][1]], device[1], [0, 0, 255], 2)
+                        if buildingImage[panel[1][1]][device[1][0]][0] == 255:
+                            fullImageColor = cv2.line(fullImageColor, panel[1], [device[1][0], panel[1][1]], [0, 0, 255], 2)
+                            fullImageColor = cv2.line(fullImageColor, [device[1][0], panel[1][1]], device[1], [0, 0, 255], 2)
+                        else:
+                            fullImageColor = cv2.line(fullImageColor, panel[1], [panel[1][0], device[1][1]], [0, 0, 255], 2)
+                            fullImageColor = cv2.line(fullImageColor, [panel[1][0], device[1][1]], device[1], [0, 0, 255], 2)
                         textImage = cv2.putText(textImage, f'{int(dist)}\'', [device[1][1] + textOffset[0], device[1][0] + textOffset[1]], fontFace=0, fontScale=.8, color=[0, 0, 255], thickness=2)
     if enableDrawing:
         return distances, textImage
@@ -318,12 +353,19 @@ def getNumber(prompt, defaultAnswer=None):
 tkinter.Tk().withdraw() # prevents an empty tkinter window from appearing
 
 useTextLocations = not getYesNo("Find precise object locations?", defaultAnswer=False)
+useTextLocations = True
 scaleInput = getNumber("Scale adjust (leave blank to use found scale)", defaultAnswer=1)
+scaleInput = 1
 
-file_path = filedialog.askopenfile(title="Select Input PDF").name
+try:
+    file_path = filedialog.askopenfile(title="Select Input PDF").name
+except:
+    print("No input file not found, program will exit")
+    time.sleep(3)
+    exit()
 
-if file_path is None:
-    print("No input file selected, program will exit")
+if file_path.split('.')[-1] != "pdf":
+    print("Wrong input type, must be .PDF, program will exit")
     time.sleep(3)
     exit()
 
@@ -335,42 +377,42 @@ if os.path.exists(outputPath+"/ignoreDevices.txt") and getYesNo("Ignore file fou
         ignoreNames = data.split(",")
         print("Ignoring outlets: " + data.replace(",", ", "))
         
-print("Loading PDF...", end="")
+print("Loading PDF...")
+
 words, blocks, pixelmap = loadPDF(file_path)
-print("Done")
 
-print("Finding panels...", end="")
+print("Finding panels...")
+
 panelText = findPanelText(words, ["RP"])
-print("Done")
 
-print("Finding scale...", end="")
+print("Finding scale...")
+
 scaleInput = findScale(pixelmap, blocks) * scaleInput * (25/35)   #scale offset
-print("Done")
 
-print("Converting PDF to image...", end="")
+print("Converting PDF to image...")
+
 fullImage, fullImageColor = convertPdfToImage(pixelmap)
-print("Done")
 
-print("Finding locations of panels...", end="")
+print("Finding locations of panels...")
+
 exactPanelPoints = findExactPanelLocations(fullImage, panelText, textOnly=useTextLocations)
-print("Done")
 
-print("Finding locations of outlets...", end="")
+print("Finding locations of outlets...")
+
 exactRP2Points = findExactOutletLocations(words, ["RP"], ignoreNames, textOnly=useTextLocations)
-print("Done")
 
-print("Finding distances to outlets...", end="")
-distances, textImage = findScaledRectilinearDistances(exactPanelPoints, exactRP2Points, scaleInput, fullImageColor)
-print("Done")
+print("Finding building walls...")
 
-print("Saving output image...", end="")
+contour, image = findBuildingContour(fullImage, fullImageColor)
+
+print("Finding distances to outlets...")
+
+distances, textImage = findScaledRectilinearDistances(exactPanelPoints, exactRP2Points, scaleInput, contour, fullImageColor)
+
 saveOutputImage(fullImageColor, textImage, path=outputPath+"/output.png")
-print("Done")
 print(f"Output image saved to {outputPath}/output.png")
 
-print("Saving output CSV file...", end="")
 saveToCSV(outputPath+"/output.csv", exactRP2Points, exactPanelPoints, distances)
-print("Done")
 print(f"Output CSV file saved to {outputPath}/output.csv")
 
 print("Program finished, will now exit")

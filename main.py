@@ -241,8 +241,8 @@ def findBuildingContour(fullImage, fullImageColor):
             biggestCntArea = area
             biggestCnt = cnt
     
-    fullImageColor = cv2.drawContours(fullImageColor, [biggestCnt], 0, (255, 0, 0), 4)
-    #cv2.imwrite("test.png", fullImageColor)
+    #fullImageColorBuilding = cv2.drawContours(fullImageColor, [biggestCnt], 0, (255, 0, 0), 4)
+    #cv2.imwrite("test.png", fullImageColorBuilding)
     return biggestCnt, fullImageColor
 
 def findScaledRectilinearDistances(exactPanelPoints, exactRP2Points, scale, buildingContour, fullImageColor=None):

@@ -2,7 +2,7 @@
 
 ## Running
 
-Run the "run.bat" file to start the program
+Run the "main.exe" file to start the program
 
 Answer the prompts and select the input pdf file
 

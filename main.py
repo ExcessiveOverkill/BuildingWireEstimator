@@ -634,7 +634,9 @@ def saveToCSV(path, RP2Points, PanelPoints, distances):
     for device in distances:
         outputArray.append([None, None, str(device[0]), str(device[1]), None])
         for index, panel in enumerate(PanelPoints):
-            if device[0].count(panel[0].split(" ")[-1]):
+            cleanPanelName = ''.join(filter(str.isalnum, panel[0].split(" ")[-1].lower()))
+            cleanDeviceName = ''.join(filter(str.isalnum, device[0].lower()))
+            if cleanDeviceName.count(cleanPanelName):
                 panelTotals[index] += device[1]
     for index, panel in enumerate(PanelPoints):
         outputArray[index+1][0] = panel[0]

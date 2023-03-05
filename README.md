@@ -13,7 +13,7 @@ They must be comma separated with no added spaces in the panels.txt file
 
 ## Running
 
-Run the "output.exe" file to start the program
+Run the "main.exe" file to start the program
 
 Answer the prompts and select the input pdf file
 

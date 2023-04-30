@@ -76,12 +76,16 @@ def findScale(pixelmap, blocks):
     yPixelsPerInch = pixelmap.yres
     if xPixelsPerInch != yPixelsPerInch:
         raise Exception("Inconsistent x and y scales")
-    for block in blocks:
-        if "=" in block[4]:
-            temp = block[4].split("\"")
-            valA = int(temp[0].split("/")[0]) / int(temp[0].split("/")[1])
-            valB = int(temp[1].replace("=", "").strip().split("'")[0]) + int(temp[1].split("-")[1].replace("\"", ""))/12
-            scale = ((valB/valA)/(xPixelsPerInch * zoom))**-1
+    try:
+        for block in blocks:
+            if "=" in block[4]:
+                temp = block[4].split("\"")
+                valA = int(temp[0].split("/")[0]) / int(temp[0].split("/")[1])
+                valB = int(temp[1].replace("=", "").strip().split("'")[0]) + int(temp[1].split("-")[1].replace("\"", ""))/12
+                scale = ((valB/valA)/(xPixelsPerInch * zoom))**-1
+    except:
+        print("Could not interpret scale from drawing, using 1:1")
+        scale = 1
     if scale == 0:
         print("No scale found in drawing, using 1:1")
         scale = 1

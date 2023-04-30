@@ -687,7 +687,6 @@ tkinter.Tk().withdraw() # prevents an empty tkinter window from appearing
 #useTextLocations = not getYesNo("Find precise object locations?", defaultAnswer=False)
 useTextLocations = True
 scaleInput = getNumber("Scale adjust (leave blank to use found scale)", defaultAnswer=1)
-scaleInput = 1
 
 try:
     file_path = filedialog.askopenfile(title="Select Input PDF").name
@@ -730,7 +729,7 @@ if len(panelText) == 0:
 
 print("Finding scale...")
 
-scaleInput = findScale(pixelmap, blocks) * scaleInput * (25/35)   #scale offset
+scaleInput = findScale(pixelmap, blocks) * (25/35) / scaleInput   #scale offset
 
 print("Converting PDF to image...")
 
